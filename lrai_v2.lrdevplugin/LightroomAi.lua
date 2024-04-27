@@ -34,10 +34,28 @@ function LightroomAI:executeCommand(command)
     LrTasks.startAsyncTask(function()
         local catalog = LrApplication.activeCatalog()
         catalog:withWriteAccessDo("Execute Plugin Command", function()
-            LrDevelopController.setValue(command.setting, command.value)
+
+            local decodedValue
+            if command.value:sub(1, 1) == "N" then
+                decodedValue = -tonumber(command.value:sub(2))  -- Negative value
+                self:logMessage("Negative value detected: " .. decodedValue)
+            elseif command.value:sub(1, 1) == "P" then
+                decodedValue = tonumber(command.value:sub(2))  -- Positive value
+                self:logMessage("Positive value detected: " .. decodedValue)
+            else
+                decodedValue = tonumber(command.value)  -- Fallback if no prefix is found
+                self:logMessage("No prefix found, using value as is: " .. decodedValue)
+            end
+
+            if command.operation == "set" then
+                LrDevelopController.setValue(command.setting, decodedValue)
+            elseif command.operation == "increment" then
+                local currentValue = LrDevelopController.getValue(command.setting)
+                LrDevelopController.setValue(command.setting, currentValue + decodedValue)
+            end
         end)
         LrTasks.yield()
-        self:logMessage("Executed command: " .. command.setting .. " = " .. tostring(command.value))
+        self:logMessage("Executed command: " .. command.setting .. " = " .. tostring(command.value) .. " in mode: " .. command.operation)
         self.isProcessing = false
         self:processQueue()
     end)

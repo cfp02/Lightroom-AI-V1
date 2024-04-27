@@ -16,6 +16,7 @@ local isProcessing = false
 
 local processQueue -- Forward declaration to allow mutual recursion
 
+logMessage("urlhandler.lua loaded")
 
 -- Function to execute commands from the queue
 local function executeCommand(command)
@@ -26,9 +27,10 @@ local function executeCommand(command)
             logMessage("Executed command: " .. command.setting .. " = " .. tostring(command.value))
         end)
         LrTasks.yield()  -- Yield to allow other tasks to run
-        isProcessing = false
-        processQueue()  -- Check if there are more commands to process
+        
     end)
+    isProcessing = false
+    processQueue()  -- Check if there are more commands to process
 end
 
 

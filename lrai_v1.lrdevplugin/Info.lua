@@ -7,4 +7,7 @@ return {
     LrToolkitIdentifier = "com.coleparks.lrai_v1",
     LrPluginName = "lrai_v1",
     LrPluginInfoUrl="coleparks.com",
+
+    URLHandler = "urlhandler.lua",
+
   }

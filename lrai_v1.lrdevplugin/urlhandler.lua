@@ -11,31 +11,69 @@ local function logMessage(message)
     myLogger:trace(message) -- Using trace level for detailed debug info, you can also use info, warn, etc.
 end
 
+local commandQueue = {}
+local isProcessing = false
 
--- Returning a table that contains the URLHandler function
+local processQueue -- Forward declaration to allow mutual recursion
+
+
+-- Function to execute commands from the queue
+local function executeCommand(command)
+    LrTasks.startAsyncTask(function()
+        local catalog = LrApplication.activeCatalog()
+        catalog:withWriteAccessDo("Execute Plugin Command", function()
+            LrDevelopController.setValue(command.setting, command.value)
+            logMessage("Executed command: " .. command.setting .. " = " .. tostring(command.value))
+        end)
+        LrTasks.yield()  -- Yield to allow other tasks to run
+        isProcessing = false
+        processQueue()  -- Check if there are more commands to process
+    end)
+end
+
+
+-- Function to process the queue
+processQueue = function()
+    if not isProcessing and #commandQueue > 0 then
+        isProcessing = true
+        local command = table.remove(commandQueue, 1)
+        executeCommand(command)
+    -- else
+    --     isProcessing = false
+    end
+end
+
+local function makeQueueString(queue)
+    local str = ""
+    for i, command in ipairs(queue) do
+        str = str .. command.setting .. " = " .. tostring(command.value) .. ", "
+    end
+    return str
+end
+
+
+-- Function to add commands to the queue
+local function enqueueCommand(command)
+    table.insert(commandQueue, command)
+    logMessage("Command enqueued. Queue length: " .. #commandQueue .. ", Command: " .. command.setting .. " = " .. tostring(command.value) .. ", Queue: " .. makeQueueString(commandQueue) .. ", isProcessing: " .. tostring(isProcessing))
+    if not isProcessing then
+        logMessage("Not processing, calling processQueue having just added the command: " .. command.setting .. " = " .. tostring(command.value))
+        processQueue()  -- Trigger processing if not already running
+    end
+end
+
+
+
+-- URL Handler that parses commands from URLs and adds them to the queue
 return {
     URLHandler = function(url)
-        -- Remove double quotes if present at the beginning and the end of the URL
-        url = url:gsub('^"(.*)"$', '%1')
-
-        -- Log the received URL for debugging purposes
-        logMessage("URL received: " .. url)
-
-        -- Example of parsing the URL and performing actions based on its contents
-        -- You can add more complex parsing logic here depending on your needs
-        local command, param = url:match("lightroom://com.coleparks.lrai_v1/(%w+)%?(%w+)")
-        if command and param then
-            logMessage("Command: " .. command .. ", Parameter: " .. param)
-            -- Perform actions based on command and parameter
-            -- This is where you would add the logic to interact with Lightroom API or perform other tasks
-            LrTasks.startAsyncTask(function()
-                local catalog = LrApplication.activeCatalog()
-                catalog:withWriteAccessDo("Adjust Develop Setting", function()
-                    LrDevelopController.setValue(command, tonumber(param))
-                end)
-            end)
+        -- Assuming URL is in the format: lightroom://com.coleparks.lrai_v1/(%w+)%?(%w+)
+        local setting, value = url:match("lightroom://com.coleparks.lrai_v1/(%w+)%?(%w+)")
+        if setting and value then
+            enqueueCommand({ setting = setting, value = tonumber(value) })
+            logMessage("URL processed: " .. url)
         else
-            logMessage("Invalid URL format received, these are command and params received: " .. tostring(command) .. ", " .. tostring(param))
+            logMessage("Invalid URL format received: " .. url)
         end
     end
 }

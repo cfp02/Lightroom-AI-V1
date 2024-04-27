@@ -45,18 +45,16 @@ def open_lightroom_url(command, params):
     webbrowser.open(url)
 
 
-
-
 def main():
     command = "Clarity"
     params = "78"
     # open_lightroom_url(command, params)
 
-    for i in range(10):
-        params = f"{2 + i}"
+    for i in range(3):
+        params = f"{20 + i}"
         print(f"Setting {command} to {params}")
         open_lightroom_url(command, params)
-        time.sleep(0.1)
+        time.sleep(0.05)
 
 
 if __name__ == '__main__':

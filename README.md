@@ -1,0 +1,1 @@
+path to logs: C:\Users\black\Documents\LrClassicLogs
